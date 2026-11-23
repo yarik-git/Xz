@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Мессенджер</title>
+<style>
+:root{--bg:#eef1ee;--panel:#fff;--txt:#1b1f1d;--mut:#76807a;--acc:#0f8a6d;--accT:#fff;--me:#d5f2e6;--bd:#e0e5e1;--r:14px}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1210;--panel:#151b18;--txt:#e8eeea;--mut:#87938c;--acc:#2bb88f;--accT:#04140e;--me:#1a3d31;--bd:#232c27}}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+input{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;width:100%;outline:none}
+input:focus,button:focus-visible{outline:2px solid var(--acc)}
+.btn{background:var(--acc);color:var(--accT);border-radius:10px;padding:10px 16px;font-weight:600}
+.btn.ghost{background:var(--bg);color:var(--txt)}
+#auth{height:100%;display:grid;place-items:center;padding:16px}
+.card{background:var(--panel);border:1px solid var(--bd);border-radius:var(--r);padding:24px;width:100%;max-width:360px;display:grid;gap:12px}
+.card h1{font-size:22px}
+.err{color:#d6423a;font-size:13px;min-height:18px}
+.link{color:var(--acc);font-size:14px;text-align:center}
+.app{height:100%;display:grid;grid-template-columns:340px 1fr}
+.side{background:var(--panel);border-right:1px solid var(--bd);display:flex;flex-direction:column;min-height:0}
+.top{padding:12px;display:grid;gap:10px;border-bottom:1px solid var(--bd)}
+.row{display:flex;align-items:center;gap:8px}
+.grow{flex:1;min-width:0}
+.list{overflow:auto;flex:1}
+.sec{padding:10px 14px 4px;color:var(--mut);font-size:13px}
+.item{display:flex;gap:10px;align-items:center;padding:10px 14px;cursor:pointer}
+.item:hover,.item.on{background:var(--bg)}
+.av{width:42px;height:42px;border-radius:50%;background:var(--acc);color:var(--accT);display:grid;place-items:center;font-weight:700;flex:none}
+.av.g{border-radius:12px}
+.item small{color:var(--mut);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.empty{padding:20px;color:var(--mut);text-align:center}
+.main{display:flex;flex-direction:column;min-height:0;min-width:0}
+.head{background:var(--panel);border-bottom:1px solid var(--bd);padding:10px 14px;display:flex;gap:10px;align-items:center}
+.head small{color:var(--mut);display:block}
+.back{display:none;font-size:22px;padding:0 6px}
+#msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:6px}
+.m{max-width:min(78%,460px);background:var(--panel);border:1px solid var(--bd);border-radius:var(--r);padding:7px 11px;align-self:flex-start;word-wrap:break-word;overflow-wrap:anywhere}
+.m.me{align-self:flex-end;background:var(--me);border-color:transparent}
+.m .who{font-size:12px;font-weight:600;color:var(--acc)}
+.m time{display:block;text-align:right;font-size:11px;color:var(--mut)}
+.m audio{height:38px;max-width:100%}
+.m.c{background:none;border:0;padding:0}
+.circle{width:210px;height:210px;border-radius:50%;object-fit:cover;background:#000;cursor:pointer;display:block}
+.hint{margin:auto;color:var(--mut)}
+.comp{background:var(--panel);border-top:1px solid var(--bd);padding:10px;display:flex;gap:8px;align-items:center}
+.ic{width:42px;height:42px;border-radius:50%;background:var(--bg);font-size:19px;flex:none}
+.ic.go{background:var(--acc);color:var(--accT)}
+#rec{background:var(--panel);border-top:1px solid var(--bd);padding:10px;display:grid;gap:10px;justify-items:center}
+#prev{width:200px;height:200px;border-radius:50%;object-fit:cover;background:#000;transform:scaleX(-1)}
+.dot{color:#d6423a;animation:bl 1s infinite}
+@keyframes bl{50%{opacity:.25}}
+@media(prefers-reduced-motion:reduce){.dot{animation:none}}
+.modal{position:fixed;inset:0;background:#0007;display:grid;place-items:center;padding:16px;z-index:5}
+@media(max-width:700px){
+.app{grid-template-columns:1fr}
+.app .main{display:none}
+.app.open .side{display:none}
+.app.open .main{display:flex}
+.back{display:block}
+.m{max-width:88%}
+}
+</style>
+</head>
+<body>
+
+<div id="auth" hidden>
+  <div class="card">
+    <h1 id="aTitle">Вход</h1>
+    <input id="aLogin" placeholder="Логин (латиница, цифры, _)" autocomplete="username" autocapitalize="none">
+    <input id="aName" placeholder="Имя (необязательно)" hidden>
+    <input id="aPass" type="password" placeholder="Пароль" autocomplete="current-password">
+    <div class="err" id="aErr"></div>
+    <button class="btn" id="aGo">Войти</button>
+    <button class="link" id="aSw">Нет аккаунта? Зарегистрироваться</button>
+  </div>
+</div>
+
+<div class="app" id="app" hidden>
+  <aside class="side">
+    <div class="top">
+      <div class="row"><b class="grow" id="meName"></b>
+        <button class="btn ghost" id="newG" title="Новая группа">+ Группа</button>
+        <button class="btn ghost" id="out" title="Выйти">Выйти</button></div>
+      <input id="q" placeholder="Поиск по логину или чатам">
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+  <section class="main">
+    <div id="noChat" class="hint">Найдите человека по логину или выберите чат</div>
+    <div class="head" id="head" hidden><button class="back" id="back" aria-label="Назад">‹</button><div class="av" id="hAv"></div><div><b id="hT"></b><small id="hS"></small></div></div>
+    <div id="msgs" hidden></div>
+    <div id="rec" hidden>
+      <video id="prev" muted playsinline hidden></video>
+      <div class="row"><span class="dot">●</span><b id="rT">0:00</b>
+        <button class="btn ghost" id="rCancel">Отмена</button>
+        <button class="btn" id="rSend">Отправить</button></div>
+    </div>
+    <div class="comp" id="comp" hidden>
+      <button class="ic" id="bVoice" title="Голосовое сообщение" aria-label="Голосовое">🎤</button>
+      <button class="ic" id="bCircle" title="Видеокружок" aria-label="Кружок">⭕</button>
+      <input id="txt" placeholder="Сообщение" autocomplete="off">
+      <button class="ic go" id="bSend" aria-label="Отправить">➤</button>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="gm" hidden>
+  <div class="card">
+    <h1>Новая группа</h1>
+    <input id="gName" placeholder="Название группы">
+    <input id="gMem" placeholder="Логины участников через запятую">
+    <div class="err" id="gErr"></div>
+    <div class="row"><button class="btn ghost grow" id="gNo">Отмена</button><button class="btn grow" id="gOk">Создать</button></div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const fmt=ts=>new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+
+/* ---------- Хранилище: IndexedDB + синхронизация между вкладками ---------- */
+let db={users:{},chats:{}},me=null,cur=null,lastKey='';
+const bc=new BroadcastChannel('messenger');
+const idb=()=>new Promise((ok,no)=>{const r=indexedDB.open('messenger',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+async function load(){const d=await idb();return new Promise(ok=>{const q=d.transaction('kv').objectStore('kv').get('db');q.onsuccess=()=>ok(q.result||{users:{},chats:{}})})}
+async function mutate(fn){
+  db=await load();const res=fn(db);
+  const d=await idb();
+  await new Promise(ok=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(db,'db');t.oncomplete=ok});
+  bc.postMessage(1);render();return res;
+}
+bc.onmessage=async()=>{db=await load();render()};
+
+/* ---------- Авторизация ---------- */
+const sha=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('msg:'+s)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+let reg=false;
+function setMode(r){reg=r;$('#aTitle').textContent=r?'Регистрация':'Вход';$('#aGo').textContent=r?'Создать аккаунт':'Войти';$('#aName').hidden=!r;
+  $('#aSw').textContent=r?'Уже есть аккаунт? Войти':'Нет аккаунта? Зарегистрироваться';$('#aErr').textContent=''}
+$('#aSw').onclick=()=>setMode(!reg);
+$('#aPass').onkeydown=e=>{if(e.key==='Enter')$('#aGo').click()};
+$('#aGo').onclick=async()=>{
+  const login=$('#aLogin').value.trim().toLowerCase().replace(/^@/,''),pass=$('#aPass').value,err=$('#aErr');
+  if(!/^[a-z0-9_]{3,20}$/.test(login))return err.textContent='Логин: 3–20 символов, латиница, цифры и _';
+  if(pass.length<4)return err.textContent='Пароль не короче 4 символов';
+  const h=await sha(pass);db=await load();
+  if(reg){
+    if(db.users[login])return err.textContent='Этот логин уже занят';
+    await mutate(d=>{d.users[login]={login,name:$('#aName').value.trim()||login,hash:h,created:Date.now()}});
+  }else{
+    const u=db.users[login];
+    if(!u||u.hash!==h)return err.textContent='Неверный логин или пароль';
+  }
+  me=login;localStorage.setItem('me',me);$('#aPass').value='';render();
+};
+$('#out').onclick=()=>{me=null;cur=null;localStorage.removeItem('me');render()};
+
+/* ---------- Список чатов и поиск ---------- */
+const title=c=>c.type==='group'?c.name:'@'+c.members.find(m=>m!==me);
+const lastTs=c=>c.msgs.length?c.msgs[c.msgs.length-1].ts:c.created;
+const prevText=m=>!m?'Нет сообщений':m.type==='voice'?'🎤 Голосовое':m.type==='circle'?'⭕ Кружок':m.text;
+$('#q').oninput=render;
+$('#list').onclick=e=>{
+  const it=e.target.closest('.item');if(!it)return;
+  if(it.dataset.u)openDm(it.dataset.u);else{cur=it.dataset.c;$('#app').classList.add('open');render()}
+};
+async function openDm(u){
+  const id='dm:'+[me,u].sort().join(':');
+  await mutate(d=>{if(!d.chats[id])d.chats[id]={id,type:'dm',members:[me,u],msgs:[],created:Date.now()}});
+  cur=id;$('#q').value='';$('#app').classList.add('open');render();
+}
+$('#back').onclick=()=>{cur=null;$('#app').classList.remove('open');render()};
+
+/* ---------- Группы ---------- */
+$('#newG').onclick=()=>{$('#gm').hidden=false;$('#gErr').textContent='';$('#gName').value='';$('#gMem').value=''};
+$('#gNo').onclick=()=>$('#gm').hidden=true;
+$('#gOk').onclick=async()=>{
+  const name=$('#gName').value.trim(),err=$('#gErr');db=await load();
+  const logins=[...new Set($('#gMem').value.split(',').map(s=>s.trim().toLowerCase().replace(/^@/,'')).filter(Boolean))].filter(l=>l!==me);
+  if(!name)return err.textContent='Введите название группы';
+  const bad=logins.filter(l=>!db.users[l]);
+  if(bad.length)return err.textContent='Не найдены: '+bad.map(b=>'@'+b).join(', ');
+  if(!logins.length)return err.textContent='Добавьте хотя бы одного участника';
+  const id='g:'+uid();
+  await mutate(d=>{d.chats[id]={id,type:'group',name,members:[me,...logins],msgs:[],created:Date.now()}});
+  $('#gm').hidden=true;cur=id;$('#app').classList.add('open');render();
+};
+
+/* ---------- Отрисовка ---------- */
+const urls={};
+const mUrl=m=>urls[m.id]||(urls[m.id]=URL.createObjectURL(m.blob));
+function render(){
+  const logged=!!me&&!!db.users[me];
+  if(me&&!logged&&Object.keys(db.users).length===0&&false){}
+  $('#auth').hidden=logged;$('#app').hidden=!logged;
+  if(!logged){if(me){me=null}return}
+  $('#meName').textContent='@'+me;
+  const q=$('#q').value.trim().toLowerCase().replace(/^@/,'');
+  let h='';
+  if(q){
+    const us=Object.keys(db.users).filter(u=>u!==me&&u.includes(q)).slice(0,20);
+    h+='<div class="sec">Люди</div>'+(us.map(u=>`<div class="item" data-u="${u}"><div class="av">${esc(u[0].toUpperCase())}</div><b>@${esc(u)}</b></div>`).join('')||'<div class="empty">Такого логина нет</div>');
+  }
+  let cs=Object.values(db.chats).filter(c=>c.members.includes(me));
+  if(q)cs=cs.filter(c=>title(c).toLowerCase().includes(q));
+  cs.sort((a,b)=>lastTs(b)-lastTs(a));
+  if(q&&cs.length)h+='<div class="sec">Чаты</div>';
+  h+=cs.map(c=>`<div class="item${c.id===cur?' on':''}" data-c="${esc(c.id)}"><div class="av${c.type==='group'?' g':''}">${esc(title(c).replace('@','')[0].toUpperCase())}</div><div><b>${esc(title(c))}</b><small>${esc(prevText(c.msgs[c.msgs.length-1]))}</small></div></div>`).join('');
+  if(!q&&!cs.length)h='<div class="empty">Чатов пока нет.<br>Введите логин в поиске, чтобы начать переписку.</div>';
+  $('#list').innerHTML=h;
+  renderChat();
+}
+function renderChat(){
+  const c=cur&&db.chats[cur];
+  const on=!!c&&c.members.includes(me);
+  $('#noChat').hidden=on;$('#head').hidden=!on;$('#msgs').hidden=!on;$('#comp').hidden=!on||!!rec;
+  if(!on){lastKey='';return}
+  $('#hT').textContent=title(c);
+  $('#hAv').textContent=title(c).replace('@','')[0].toUpperCase();$('#hAv').className='av'+(c.type==='group'?' g':'');
+  $('#hS').textContent=c.type==='group'?c.members.map(m=>'@'+m).join(', '):'личный чат';
+  const key=c.id+':'+c.msgs.length;if(key===lastKey)return;lastKey=key;
+  const box=$('#msgs');
+  box.innerHTML=c.msgs.length?c.msgs.map(m=>{
+    const mine=m.from===me,who=c.type==='group'&&!mine?`<div class="who">@${esc(m.from)}</div>`:'';
+    const body=m.type==='text'?esc(m.text):m.type==='voice'?`<audio controls preload="metadata" src="${mUrl(m)}"></audio>`:`<video class="circle" src="${mUrl(m)}" muted loop autoplay playsinline></video>`;
+    return `<div class="m${mine?' me':''}${m.type==='circle'?' c':''}">${who}${body}<time>${fmt(m.ts)}</time></div>`}).join(''):'<div class="hint">Напишите первое сообщение</div>';
+  box.scrollTop=box.scrollHeight;
+}
+$('#msgs').onclick=e=>{
+  const v=e.target.closest('.circle');if(!v)return;
+  if(v.muted){document.querySelectorAll('.circle').forEach(x=>x.muted=true);v.muted=false;v.currentTime=0;v.play()}else v.muted=true;
+};
+
+/* ---------- Отправка ---------- */
+function push(m){const id=cur;return mutate(d=>{d.chats[id].msgs.push({id:uid(),from:me,ts:Date.now(),...m})})}
+function sendText(){const t=$('#txt').value.trim();if(!t||!cur)return;$('#txt').value='';push({type:'text',text:t})}
+$('#bSend').onclick=sendText;
+$('#txt').onkeydown=e=>{if(e.key==='Enter')sendText()};
+
+/* ---------- Голосовые и кружки ---------- */
+let rec=null;
+async function startRec(kind){
+  if(!navigator.mediaDevices||!window.MediaRecorder)return alert('Браузер не поддерживает запись. Нужен HTTPS (GitHub Pages подходит).');
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia(kind==='voice'?{audio:true}:{audio:true,video:{facingMode:'user',width:480,height:480}})}
+  catch{return alert('Нет доступа к микрофону/камере. Разрешите его в настройках браузера.')}
+  const chunks=[],opt=kind==='voice'?{audioBitsPerSecond:48000}:{videoBitsPerSecond:600000,audioBitsPerSecond:48000};
+  const mr=new MediaRecorder(stream,opt),t0=Date.now(),limit=kind==='voice'?300:60;
+  rec={send:false};
+  mr.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+  mr.onstop=()=>{
+    stream.getTracks().forEach(t=>t.stop());clearInterval(rec.tm);
+    const ok=rec.send&&chunks.length;rec=null;
+    $('#rec').hidden=true;$('#prev').srcObject=null;renderChat();
+    if(ok)push({type:kind,blob:new Blob(chunks,{type:mr.mimeType||(kind==='voice'?'audio/webm':'video/webm')})});
+  };
+  rec.stop=send=>{rec.send=send;mr.state!=='inactive'&&mr.stop()};
+  const pv=$('#prev');pv.hidden=kind==='voice';if(kind==='circle'){pv.srcObject=stream;pv.play()}
+  $('#rec').hidden=false;$('#comp').hidden=true;
+  rec.tm=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('#rT').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0');if(s>=limit)rec.stop(true)},250);
+  $('#rT').textContent='0:00';mr.start();
+}
+$('#bVoice').onclick=()=>startRec('voice');
+$('#bCircle').onclick=()=>startRec('circle');
+$('#rSend').onclick=()=>rec&&rec.stop(true);
+$('#rCancel').onclick=()=>rec&&rec.stop(false);
+
+/* ---------- Старт ---------- */
+(async()=>{db=await load();me=localStorage.getItem('me');if(me&&!db.users[me])me=null;render()})();
+</script>
+</body>
+</html>
